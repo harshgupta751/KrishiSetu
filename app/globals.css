@@ -53,27 +53,27 @@
 }
 
 .dark {
-  /* Dark mode - deep forest earth tones (original colors) */
-  --color-bg: 11 20 16;
-  --color-bg-surface: 17 29 22;
-  --color-bg-elevated: 24 36 25;
-  --color-bg-hover: 31 47 33;
-  --color-border: 42 61 44;
-  --color-border-muted: 30 45 32;
+  /* Ultra-Premium Dark Mode - OLED friendly deep forest slate */
+  --color-bg: 4 9 6;            /* #040906 */
+  --color-bg-surface: 10 18 13; /* #0a120d */
+  --color-bg-elevated: 17 28 21; /* #111c15 */
+  --color-bg-hover: 23 38 28;    /* #17261c */
+  --color-border: 28 46 34;      /* #1c2e22 */
+  --color-border-muted: 18 30 22;/* #121e16 */
 
-  /* Brand green spectrum */
-  --color-green-50: 240 250 240;
-  --color-green-100: 220 245 220;
-  --color-green-200: 182 234 182;
-  --color-green-300: 130 216 130;
-  --color-green-400: 77 194 77;
-  --color-green-500: 46 168 46;
-  --color-green-600: 34 140 34;
-  --color-green-700: 26 107 26;
-  --color-green-800: 19 77 19;
-  --color-green-900: 12 51 12;
+  /* Brand green spectrum - Vibrant & electric for dark mode pop */
+  --color-green-50: 240 253 244;
+  --color-green-100: 220 252 231;
+  --color-green-200: 187 247 208;
+  --color-green-300: 134 239 172;
+  --color-green-400: 74 222 128;   /* #4ade80 - Glowing accent */
+  --color-green-500: 34 197 94;    /* #22c55e - Primary active */
+  --color-green-600: 22 163 74;    /* #16a34a */
+  --color-green-700: 21 128 61;
+  --color-green-800: 22 101 52;
+  --color-green-900: 20 83 45;
 
-  /* Accent */
+  /* Accent - Rich gold/amber for high contrast */
   --color-amber-400: 251 191 36;
   --color-amber-500: 245 158 11;
   --color-amber-600: 217 119 6;
@@ -81,14 +81,14 @@
   /* Status colours */
   --color-success: 34 197 94;
   --color-warning: 245 158 11;
-  --color-error: 239 68 68;
-  --color-info: 59 130 246;
+  --color-error: 248 113 113;      /* Brighter red for dark mode */
+  --color-info: 96 165 250;        /* Brighter blue */
 
-  /* Text */
-  --color-text-primary: 232 245 233;
-  --color-text-secondary: 148 168 150;
-  --color-text-muted: 90 116 96;
-  --color-text-inverse: 11 20 16;
+  /* Text - Crisp readability */
+  --color-text-primary: 240 253 244;  /* Crisp off-white/green */
+  --color-text-secondary: 163 184 168; /* Sleek grey-green */
+  --color-text-muted: 104 125 108;     /* Muted slate */
+  --color-text-inverse: 4 9 6;
 }
 
 /* ─── Base Resets ─────────────────────────────────────────────────────────── */
