@@ -7,7 +7,7 @@
 
 "use client";
 
-import { useRef, useState, type KeyboardEvent } from "react";
+import { useRef, useState, useEffect, type KeyboardEvent } from "react";
 import {
   ImagePlus,
   Paperclip,
@@ -28,6 +28,7 @@ interface ChatInputBarProps {
   disabled?: boolean;
   placeholder?: string;
   language?: LanguageCode;
+  initialText?: string;
 }
 
 export default function ChatInputBar({
@@ -36,8 +37,16 @@ export default function ChatInputBar({
   disabled = false,
   placeholder = "Ask about soil health, pest control, or yields...",
   language = "hi",
+  initialText = "",
 }: ChatInputBarProps) {
-  const [text, setText] = useState("");
+  const [text, setText] = useState(initialText);
+
+  useEffect(() => {
+    if (initialText) {
+      setText(initialText);
+    }
+  }, [initialText]);
+
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageData, setImageData] = useState<{ base64: string; mimeType: string } | null>(null);
   const [isRecording, setIsRecording] = useState(false);
@@ -52,16 +61,15 @@ export default function ChatInputBar({
   const handleImageSelect = async (file: File) => {
     if (!file.type.startsWith("image/")) return;
 
-    const previewUrl = URL.createObjectURL(file);
     const base64 = await fileToBase64(file);
     const mimeType = getImageMimeType(file);
+    const previewUrl = `data:${mimeType};base64,${base64}`;
 
     setImagePreview(previewUrl);
     setImageData({ base64, mimeType });
   };
 
   const clearImage = () => {
-    if (imagePreview) URL.revokeObjectURL(imagePreview);
     setImagePreview(null);
     setImageData(null);
     if (imageInputRef.current) imageInputRef.current.value = "";
@@ -224,14 +232,6 @@ export default function ChatInputBar({
             <ImagePlus className="w-[18px] h-[18px]" strokeWidth={2} />
           </button>
 
-          {/* File clip */}
-          <button
-            disabled={disabled}
-            className="p-1.5 rounded-lg text-cropwise-faint hover:text-cropwise-muted hover:bg-cropwise-hover transition-all disabled:opacity-40"
-            title="Attach file"
-          >
-            <Paperclip className="w-[18px] h-[18px]" strokeWidth={2} />
-          </button>
         </div>
 
         {/* Textarea */}

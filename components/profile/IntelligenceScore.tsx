@@ -8,15 +8,24 @@
 
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n/LanguageProvider";
+
+interface SubMetricItem {
+  label: string;
+  value: string;
+  color?: string;
+}
 
 interface IntelligenceScoreProps {
   score: number; // 0–100
+  subMetrics?: SubMetricItem[];
 }
 
-export default function IntelligenceScore({ score }: IntelligenceScoreProps) {
+export default function IntelligenceScore({ score, subMetrics }: IntelligenceScoreProps) {
   const [animated, setAnimated] = useState(0);
+  const { t } = useI18n();
 
-  // Animate count-up on mount
+  // Animate count-up on mount & updates
   useEffect(() => {
     const timer = setTimeout(() => setAnimated(score), 100);
     return () => clearTimeout(timer);
@@ -27,11 +36,19 @@ export default function IntelligenceScore({ score }: IntelligenceScoreProps) {
   const stroke   = 12;
   const r        = (size - stroke) / 2;
   const circ     = 2 * Math.PI * r;
-  const offset   = circ - (animated / 100) * circ;
+  const offset   = circ - (Math.min(Math.max(animated, 0), 100) / 100) * circ;
 
   const scoreColor =
     score >= 80 ? "#2ea82e" :
     score >= 60 ? "#f59e0b" : "#ef4444";
+
+  const defaultMetrics: SubMetricItem[] = [
+    { label: "Yield",       value: "+12%",      color: "text-cropwise-green-light" },
+    { label: "Soil Health", value: "Optimal",    color: "text-cropwise-text" },
+    { label: "Irrigation",  value: "92% Eff.",   color: "text-blue-400"  },
+  ];
+
+  const metricsToDisplay = subMetrics && subMetrics.length > 0 ? subMetrics : defaultMetrics;
 
   return (
     <div className="flex flex-col items-center">
@@ -64,21 +81,17 @@ export default function IntelligenceScore({ score }: IntelligenceScoreProps) {
             {score}
           </span>
           <span className="text-[10px] font-semibold uppercase tracking-widest text-cropwise-faint mt-0.5">
-            Optimization
+            {t("Optimization")}
           </span>
         </div>
       </div>
 
       {/* Sub-metrics */}
       <div className="flex items-center gap-6 mt-4">
-        {[
-          { label: "Yield",       value: "+12%",      color: "text-cropwise-green-light" },
-          { label: "Soil Health", value: "Excellent",  color: "text-cropwise-text" },
-          { label: "Irrigation",  value: "92% Eff.",   color: "text-blue-400"  },
-        ].map(({ label, value, color }) => (
+        {metricsToDisplay.map(({ label, value, color }) => (
           <div key={label} className="text-center">
-            <p className="text-[10px] uppercase tracking-widest text-cropwise-faint mb-0.5">{label}</p>
-            <p className={cn("text-sm font-bold", color)}>{value}</p>
+            <p className="text-[10px] uppercase tracking-widest text-cropwise-faint mb-0.5">{t(label)}</p>
+            <p className={cn("text-sm font-bold", color ?? "text-cropwise-text")}>{t(value)}</p>
           </div>
         ))}
       </div>

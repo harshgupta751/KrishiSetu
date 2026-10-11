@@ -1,6 +1,6 @@
 /**
  * components/layout/Sidebar.tsx
- * Responsive sidebar navigation for CropWise AI.
+ * Responsive sidebar navigation for KrishiSetu.
  *
  * - Desktop: fixed left sidebar (256px wide)
  * - Mobile: slides in as a drawer overlay
@@ -106,27 +106,48 @@ interface SidebarProps {
   onMobileClose?: () => void;
   /** Triggered when the Notifications button is clicked */
   onNotificationsClick?: () => void;
+  /** Controlled desktop collapsed state */
+  collapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
 // ─── Sidebar Component ────────────────────────────────────────────────────────
 
-export default function Sidebar({ mobileOpen = false, onMobileClose, onNotificationsClick }: SidebarProps) {
+export default function Sidebar({
+  mobileOpen = false,
+  onMobileClose,
+  onNotificationsClick,
+  collapsed: controlledCollapsed,
+  onToggleCollapse,
+}: SidebarProps) {
   const pathname = usePathname();
   const { t } = useI18n();
-  const [collapsed, setCollapsed] = useState(false);
+  const [internalCollapsed, setInternalCollapsed] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   // Avoid hydration mismatch for localStorage-persisted collapsed state
   useEffect(() => {
-    const saved = localStorage.getItem("sidebar-collapsed");
-    if (saved === "true") setCollapsed(true);
+    if (controlledCollapsed === undefined) {
+      try {
+        const saved = localStorage.getItem("sidebar-collapsed");
+        if (saved === "true") setInternalCollapsed(true);
+      } catch { /* ignore */ }
+    }
     setMounted(true);
-  }, []);
+  }, [controlledCollapsed]);
+
+  const collapsed = controlledCollapsed !== undefined ? controlledCollapsed : internalCollapsed;
 
   const toggleCollapsed = () => {
-    const next = !collapsed;
-    setCollapsed(next);
-    localStorage.setItem("sidebar-collapsed", String(next));
+    if (onToggleCollapse) {
+      onToggleCollapse();
+    } else {
+      const next = !internalCollapsed;
+      setInternalCollapsed(next);
+      try {
+        localStorage.setItem("sidebar-collapsed", String(next));
+      } catch { /* ignore */ }
+    }
   };
 
   if (!mounted) return null; // Prevent SSR flash
@@ -176,7 +197,7 @@ export default function Sidebar({ mobileOpen = false, onMobileClose, onNotificat
             {!collapsed && (
               <div className="min-w-0">
                 <span className="block font-semibold text-sm text-cropwise-text leading-tight truncate">
-                  CropWise AI
+                  KrishiSetu
                 </span>
                 <span className="block text-[10px] text-cropwise-faint leading-tight truncate">
                   {t("Smart Farming Advisor")}

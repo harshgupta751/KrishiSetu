@@ -50,6 +50,7 @@ export interface FirestoreUser {
 
   // Farmer-specific profile
   farmName: string;               // e.g. "Sharma Farms"
+  soilType?: string;              // e.g. "Alluvial Soil", "Black Cotton Soil"
   location: {
     state: string;                // e.g. "Punjab"
     district: string;             // e.g. "Ludhiana"

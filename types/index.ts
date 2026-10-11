@@ -1,6 +1,6 @@
 /**
  * types/index.ts
- * Centralised TypeScript types for CropWise AI.
+ * Centralised TypeScript types for KrishiSetu.
  * Import from here rather than defining types inline in components.
  */
 

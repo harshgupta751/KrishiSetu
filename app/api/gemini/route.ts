@@ -94,7 +94,7 @@ function buildChatSystemPrompt(language = "en", contextData?: string): string {
     od: "ଓଡ଼ିଆରେ ଉତ୍ତର ଦିଅନ୍ତୁ। ସରଳ ଓ ସ୍ପଷ୍ଟ ଭାଷା ବ୍ୟବହାର କରନ୍ତୁ।",
   };
 
-  return `You are CropWise AI, an expert agricultural advisor for Indian farmers.
+  return `You are KrishiSetu, an expert agricultural advisor for Indian farmers.
 
 Your expertise covers:
 - Crop cultivation: wheat, rice, maize, cotton, pulses, oilseeds, vegetables
@@ -139,7 +139,7 @@ RESPONSE GUIDELINES:
 - Always suggest consulting a local agronomist for critical decisions`;
 }
 
-const PEST_SYSTEM = `You are CropWise AI's Sustainable Pest Management Expert.
+const PEST_SYSTEM = `You are KrishiSetu's Sustainable Pest Management Expert.
 
 Your role is to provide environmentally responsible, climate-smart pest management recommendations based on detected crop diseases or pests.
 

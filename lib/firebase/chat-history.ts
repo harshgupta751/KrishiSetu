@@ -82,6 +82,7 @@ export async function getUserChatSessions(
       title:       data.title ?? "Untitled Session",
       mode:        data.mode  ?? "general",
       lastMessage: "",
+      messageCount: data.messageCount ?? 0,
       updatedAt:   data.updatedAt?.toDate?.() ?? new Date(),
     } as ChatSession;
   });

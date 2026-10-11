@@ -80,7 +80,7 @@ export default function LoginPage() {
           <div className="w-12 h-12 rounded-2xl bg-cropwise-green/20 border border-cropwise-green/40 flex items-center justify-center mb-4">
             <Leaf className="w-6 h-6 text-cropwise-green-light" strokeWidth={2} />
           </div>
-          <h1 className="text-2xl font-bold text-cropwise-text">CropWise AI</h1>
+          <h1 className="text-2xl font-bold text-cropwise-text">KrishiSetu</h1>
           <p className="text-sm text-cropwise-faint mt-1">The Digital Agronomist</p>
         </div>
 

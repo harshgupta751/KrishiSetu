@@ -17,17 +17,17 @@ import type { MarketPrice } from "@/types";
 import type { ExtendedWeatherData } from "@/lib/weather";
 
 const QUICK_ACTIONS = [
-  { href: "/activity-log",   icon: ClipboardList, label: "Log Activity",  bg: "bg-blue-900/40  border-blue-800/40",  ic: "text-blue-400"  },
-  { href: "/chat",           icon: MessageSquare, label: "Ask AI",        bg: "bg-cropwise-green/15 border-cropwise-green/30", ic: "text-cropwise-green-light" },
-  { href: "/pest-diagnosis", icon: ScanSearch,    label: "Scan Pest",     bg: "bg-rose-900/40  border-rose-800/40",  ic: "text-rose-400"  },
-  { href: "/market",         icon: Store,         label: "Check Mandi",   bg: "bg-amber-900/40 border-amber-800/40", ic: "text-amber-400" },
+  { href: "/activity-log",   icon: ClipboardList, label: "Log Activity",  bg: "bg-blue-50 border-blue-200 dark:bg-blue-900/40 dark:border-blue-800/40",        ic: "text-blue-700 dark:text-blue-400"  },
+  { href: "/chat",           icon: MessageSquare, label: "Ask AI",        bg: "bg-emerald-50 border-emerald-200 dark:bg-cropwise-green/15 dark:border-cropwise-green/30", ic: "text-emerald-700 dark:text-cropwise-green-light" },
+  { href: "/pest-diagnosis", icon: ScanSearch,    label: "Scan Pest",     bg: "bg-rose-50 border-rose-200 dark:bg-rose-900/40 dark:border-rose-800/40",        ic: "text-rose-700 dark:text-rose-400"  },
+  { href: "/market",         icon: Store,         label: "Check Mandi",   bg: "bg-amber-50 border-amber-200 dark:bg-amber-900/40 dark:border-amber-800/40",      ic: "text-amber-700 dark:text-amber-400" },
 ];
 
 function ChartTooltip({ active, payload, label }: TooltipProps<number, string>) {
   if (!active || !payload?.length) return null;
   return (
     <div className="bg-cropwise-surface border border-cropwise-border rounded-xl px-3 py-2 shadow-xl">
-      <p className="text-[10px] text-cropwise-faint mb-1 font-medium">{label}</p>
+      <p className="text-[10px] text-cropwise-muted mb-1 font-medium">{label}</p>
       {(payload as Array<{ name?: string; value?: number; color?: string }>).map((p) => (
         <p key={p.name} className="text-xs font-semibold" style={{ color: p.color }}>
           {p.name}: {p.value}{String(p.name).includes("Moisture") ? "%" : "mm"}
@@ -43,9 +43,11 @@ const ACT_ICONS: Record<string, LucideIcon> = {
   weather_check: CloudRain, scheme_search: ClipboardList, default: Activity,
 };
 const ACT_COLORS: Record<string, string> = {
-  pest_diagnosis: "text-rose-400 bg-rose-400/10", chat_message: "text-cropwise-green-light bg-cropwise-green/10",
-  crop_recommendation: "text-amber-400 bg-amber-400/10", market_query: "text-blue-400 bg-blue-400/10",
-  weather_check: "text-sky-400 bg-sky-400/10",
+  pest_diagnosis: "text-rose-700 bg-rose-100 dark:text-rose-400 dark:bg-rose-400/10",
+  chat_message: "text-emerald-700 bg-emerald-100 dark:text-cropwise-green-light dark:bg-cropwise-green/10",
+  crop_recommendation: "text-amber-700 bg-amber-100 dark:text-amber-400 dark:bg-amber-400/10",
+  market_query: "text-blue-700 bg-blue-100 dark:text-blue-400 dark:bg-blue-400/10",
+  weather_check: "text-sky-700 bg-sky-100 dark:text-sky-400 dark:bg-sky-400/10",
 };
 
 function timeAgo(entry: ActivityLogEntry): string {
@@ -177,29 +179,29 @@ export default function DashboardPage() {
         {/* Stat cards */}
         <motion.div variants={itemVariants} className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <motion.div whileHover={{ scale: 1.02, y: -4 }} className="rounded-xl bg-cropwise-surface border border-cropwise-border p-4">
-            <span className="text-[9px] font-bold uppercase text-amber-400 bg-amber-900/30 px-1.5 py-0.5 rounded">{t("Wheat MSP")}</span>
-            <p className="text-[10px] text-cropwise-faint uppercase tracking-wider mt-2 mb-1">{t("Current Market Price")}</p>
+            <span className="text-[9px] font-bold uppercase text-amber-800 bg-amber-100 border border-amber-300 dark:text-amber-400 dark:bg-amber-900/30 dark:border-transparent px-1.5 py-0.5 rounded">{t("Wheat MSP")}</span>
+            <p className="text-[10px] text-cropwise-muted uppercase tracking-wider mt-2 mb-1">{t("Current Market Price")}</p>
             {loadingP ? <div className="shimmer h-7 w-24 rounded" /> : (
               <>
                 <p className="text-2xl font-bold text-cropwise-text">₹{wheatPrice?.currentPrice?.toLocaleString("en-IN") ?? "—"}/q</p>
-                <p className={cn("text-xs mt-1 flex items-center gap-1",(wheatPrice?.priceChangePercent ?? 0)>=0?"text-cropwise-green-light":"text-rose-400")}>
+                <p className={cn("text-xs mt-1 flex items-center gap-1 font-medium",(wheatPrice?.priceChangePercent ?? 0)>=0?"text-emerald-700 dark:text-cropwise-green-light":"text-rose-600 dark:text-rose-400")}>
                   <TrendingUp className="w-3 h-3" />{(wheatPrice?.priceChangePercent ?? 0).toFixed(1)}% {t("vs MSP")}
                 </p>
               </>
             )}
           </motion.div>
           <motion.div whileHover={{ scale: 1.02, y: -4 }} className="rounded-xl bg-cropwise-surface border border-cropwise-border p-4">
-            <p className="text-[10px] text-cropwise-faint uppercase tracking-wider mb-1">{t("Last 24h Rainfall")}</p>
+            <p className="text-[10px] text-cropwise-muted uppercase tracking-wider mb-1">{t("Last 24h Rainfall")}</p>
             <p className="text-2xl font-bold text-cropwise-text">{weather ? `${weather.precipitation}mm` : "—"}</p>
             {weather && <div className="flex gap-1 mt-2">{(weather?.forecast ?? []).slice(0,5).map((d: import('@/types').WeatherForecastDay, i: number)=>(<div key={i} className="flex-1 h-8 bg-cropwise-border-muted rounded-sm overflow-hidden flex items-end"><div className="w-full bg-cropwise-green/60 rounded-sm" style={{height:`${d.precipitationChance}%`}}/></div>))}</div>}
           </motion.div>
           <motion.div whileHover={{ scale: 1.02, y: -4 }} className="rounded-xl bg-cropwise-surface border border-cropwise-border p-4">
-            <p className="text-[10px] text-cropwise-faint uppercase tracking-wider mb-1">{t("Pest Risk Alert")}</p>
-            <p className="text-2xl font-bold text-cropwise-green-light">{t("Low Risk")}</p>
-            <p className="text-xs text-cropwise-faint mt-1 flex items-center gap-1"><RefreshCw className="w-3 h-3"/>{t("Scanned")} {activities.filter((a: import('@/lib/firebase/activity-log').ActivityLogEntry)=>a.type==="pest_diagnosis").length > 0 ? t("recently") : t("never")}</p>
+            <p className="text-[10px] text-cropwise-muted uppercase tracking-wider mb-1">{t("Pest Risk Alert")}</p>
+            <p className="text-2xl font-bold text-emerald-700 dark:text-cropwise-green-light">{t("Low Risk")}</p>
+            <p className="text-xs text-cropwise-muted mt-1 flex items-center gap-1"><RefreshCw className="w-3 h-3"/>{t("Scanned")} {activities.filter((a: import('@/lib/firebase/activity-log').ActivityLogEntry)=>a.type==="pest_diagnosis").length > 0 ? t("recently") : t("never")}</p>
           </motion.div>
           <motion.div whileHover={{ scale: 1.02, y: -4 }} className="rounded-xl bg-cropwise-surface border border-cropwise-border p-4">
-            <p className="text-[10px] text-cropwise-faint uppercase tracking-wider mb-1">{t("Soil Moisture")}</p>
+            <p className="text-[10px] text-cropwise-muted uppercase tracking-wider mb-1">{t("Soil Moisture")}</p>
             <p className="text-2xl font-bold text-cropwise-text">{weather ? `${weather.soilMoisture}%` : "—"}</p>
             <div className="mt-2 h-1.5 w-full rounded-full bg-cropwise-border-muted overflow-hidden"><div className="h-full rounded-full bg-cropwise-green" style={{width: `${weather?.soilMoisture ?? 0}%`}}/></div>
           </motion.div>

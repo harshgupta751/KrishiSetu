@@ -42,6 +42,12 @@ export interface ExtendedWeatherData extends WeatherData {
   hourlyTemp:          number[]; // 24h temperature values
   hourlyRain:          number[]; // 24h precipitation probability %
   hourlyTime:          string[]; // 24h time labels
+  sunrise?:            string;
+  sunset?:             string;
+  windDirection?:      string;
+  allHourlyTemp?:      number[];
+  allHourlyRain?:      number[];
+  allHourlyTime?:      string[];
 }
 
 // ── In-memory cache so we don't hit Open-Meteo on every request ───────────────
@@ -73,13 +79,14 @@ export async function fetchWeatherData(
 
   url.searchParams.set("current", [
     "temperature_2m", "relative_humidity_2m", "apparent_temperature", "precipitation",
-    "weather_code", "wind_speed_10m", "visibility", "uv_index", "surface_pressure",
+    "weather_code", "wind_speed_10m", "wind_direction_10m", "visibility", "uv_index", "surface_pressure",
     "soil_temperature_0cm",       // real soil surface temp
     "soil_moisture_0_to_1cm",     // real soil moisture (top layer)
   ].join(","));
   url.searchParams.set("daily", [
     "weather_code", "temperature_2m_max", "temperature_2m_min",
     "precipitation_probability_max", "precipitation_sum",
+    "sunrise", "sunset",
     "et0_fao_evapotranspiration",  // real evapotranspiration
     "shortwave_radiation_sum",     // real solar radiation
   ].join(","));
@@ -133,6 +140,23 @@ export async function fetchWeatherData(
     new Date(t).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true })
   );
 
+  const rawSunrise = daily.sunrise?.[0];
+  const rawSunset  = daily.sunset?.[0];
+  const sunrise = rawSunrise
+    ? new Date(rawSunrise).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true })
+    : "06:12 AM";
+  const sunset = rawSunset
+    ? new Date(rawSunset).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true })
+    : "06:45 PM";
+
+  const deg = (cur.wind_direction_10m as number) ?? 315;
+  const directions = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"];
+  const windDirection = directions[Math.round(deg / 22.5) % 16] || "NW";
+
+  const allHourlyTemp = (hourly.temperature_2m as number[]) || [];
+  const allHourlyRain = (hourly.precipitation_probability as number[]) || [];
+  const allHourlyTime = (hourly.time as string[]) || [];
+
   const result: ExtendedWeatherData = {
     location: locationName,
     temperature: Math.round(cur.temperature_2m as number),
@@ -154,6 +178,12 @@ export async function fetchWeatherData(
     hourlyTemp: hourlyTemp.length ? hourlyTemp : Array(24).fill(cur.temperature_2m),
     hourlyRain: hourlyRain.length ? hourlyRain : Array(24).fill(10),
     hourlyTime: hourlyTime.length ? hourlyTime : Array(24).fill("--"),
+    sunrise,
+    sunset,
+    windDirection,
+    allHourlyTemp,
+    allHourlyRain,
+    allHourlyTime,
   };
 
   weatherCache.set(key, { data: result, ts: Date.now() });
@@ -207,6 +237,12 @@ function buildFallbackWeather(
     ),
     hourlyRain: Array(24).fill(10),
     hourlyTime: Array.from({ length: 24 }, (_, h) => `${(h % 12) || 12} ${h < 12 ? "AM" : "PM"}`),
+    sunrise: "06:15 AM",
+    sunset: "06:45 PM",
+    windDirection: "NW",
+    allHourlyTemp: Array(168).fill(baseTemp),
+    allHourlyRain: Array(168).fill(10),
+    allHourlyTime: Array(168).fill("12:00 PM"),
   };
 }
 

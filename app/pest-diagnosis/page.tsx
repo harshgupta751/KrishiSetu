@@ -248,7 +248,7 @@ export default function PestDiagnosisPage() {
     const sections = (r.detailedReportSections ?? [])
       .map((s) => `<h3>${esc(s.title)}</h3><p>${esc(s.content)}</p>`).join("");
 
-    const html = `<!doctype html><html><head><meta charset="utf-8"><title>CropWise AI — ${esc(r.diseaseName)}</title>
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>KrishiSetu — ${esc(r.diseaseName)}</title>
       <style>
         body{font-family:system-ui,Arial,sans-serif;color:#111;max-width:760px;margin:32px auto;padding:0 24px;line-height:1.55}
         h1{margin:0;font-size:24px} h2{margin-top:28px;font-size:18px;border-bottom:1px solid #ddd;padding-bottom:4px}
@@ -256,7 +256,7 @@ export default function PestDiagnosisPage() {
         ul{margin:6px 0;padding-left:20px} li{margin:3px 0} .head{border-bottom:2px solid #2ea82e;padding-bottom:10px;margin-bottom:6px}
         @media print{.no-print{display:none}}
       </style></head><body>
-      <div class="head"><h1>CropWise AI — ${t("Pest Diagnosis Report")}</h1>
+      <div class="head"><h1>KrishiSetu — ${t("Pest Diagnosis Report")}</h1>
       <p class="muted">${t("Analysis ID")}: #${esc(analysisId)} · ${new Date().toLocaleString("en-IN")}</p></div>
       <h2>${esc(r.diseaseName)} ${r.scientificName ? `<span class="muted" style="font-size:14px">(${esc(r.scientificName)})</span>` : ""}</h2>
       <p><span class="pill">${esc(r.severity)} severity</span><span class="pill">${r.confidencePercent}% match</span></p>
@@ -637,13 +637,6 @@ export default function PestDiagnosisPage() {
                   })}
                 </div>
 
-                {/* Order supplies CTA */}
-                <button
-                  type="button"
-                  className="relative z-10 w-full flex items-center justify-center gap-2 py-2.5 rounded-lg border border-white/20 text-white text-sm font-medium hover:bg-white/10 transition-colors"
-                >
-                  <ShoppingCart className="w-4 h-4" /> {t("Order Recommended Supplies")}
-                </button>
               </div>
             </div>
 

@@ -76,7 +76,7 @@ export default function ChatSidebar({
 
       {/* ── Session list ─────────────────────────────────────────── */}
       <div className="flex-1 overflow-y-auto px-2 pb-4 space-y-0.5">
-        {sessions.map((session) => {
+        {sessions.filter(s => (s.messageCount && s.messageCount > 0) || s.id === activeSessionId).map((session) => {
           const isActive = session.id === activeSessionId;
           return (
             <button

@@ -28,7 +28,7 @@ export default function AuthGuard({ children }: { children?: React.ReactNode }) 
           <Leaf className="w-6 h-6 text-cropwise-green-light" strokeWidth={2} />
         </div>
         <Loader2 className="w-5 h-5 text-cropwise-green-light animate-spin" />
-        <p className="text-xs text-cropwise-faint">Loading CropWise AI...</p>
+        <p className="text-xs text-cropwise-faint">Loading KrishiSetu...</p>
       </div>
     );
   }

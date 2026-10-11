@@ -199,7 +199,7 @@ export default function SettingsPage() {
             <div className="flex-1">
               <h2 className="text-xl font-bold text-white mb-2">Securing Your Farm Data</h2>
               <p className="text-sm text-[#82d882]/70 leading-relaxed max-w-lg">
-                CropWise AI uses military-grade encryption for all sensor data and personal configurations.
+                KrishiSetu uses military-grade encryption for all sensor data and personal configurations.
                 Your settings are synced across all your devices in real-time via Firebase.
               </p>
               <div className="flex items-center gap-3 mt-4">

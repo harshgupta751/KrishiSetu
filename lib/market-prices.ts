@@ -265,17 +265,30 @@ function getRegionalFallbackPrices(state?: string, district?: string): MarketPri
 
 export async function fetchHistoricalPrices(
   cropName: string,
+  state?: string,
+  district?: string,
 ): Promise<MarketHistoricalPoint[]> {
   const meta = CROP_META.find((m) => m.display === cropName);
   const msp = meta?.msp ?? 2000;
 
-  // Try to anchor the most recent point to a real national modal price.
+  // Regional baseline offset if state is chosen
   let latest = msp;
+  if (state && STATE_PRICE_OFFSETS[state]?.[cropName] !== undefined) {
+    latest = msp + STATE_PRICE_OFFSETS[state][cropName];
+  } else {
+    const defaultOffset = (STATE_PRICE_OFFSETS["Punjab"]?.[cropName] ?? 50);
+    latest = msp + defaultOffset;
+  }
+
+  // Try to anchor the most recent point to real mandi records if available
   try {
-    const records = await fetchRecords(
-      { "filters[commodity]": meta?.match[0] ?? cropName },
-      200,
-    );
+    const params: Record<string, string> = {
+      "filters[commodity]": meta?.match[0] ?? cropName,
+    };
+    if (state) params["filters[state.keyword]"] = state;
+    if (district) params["filters[district]"] = district;
+
+    const records = await fetchRecords(params, 200);
     const modals = records.map((r) => num(r.modal_price)).filter(Boolean);
     if (modals.length) {
       latest = Math.round(modals.reduce((a, b) => a + b, 0) / modals.length);
@@ -286,6 +299,7 @@ export async function fetchHistoricalPrices(
 
   return buildTrend(latest, msp);
 }
+
 
 // Smooth 6-month series ending at `latest`, oscillating around the MSP.
 function buildTrend(latest: number, msp: number): MarketHistoricalPoint[] {

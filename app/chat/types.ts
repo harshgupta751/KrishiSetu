@@ -25,6 +25,7 @@ export interface ChatSession {
   title: string;
   mode: ChatMode;
   lastMessage: string;
+  messageCount?: number;
   updatedAt: Date;
 }
 

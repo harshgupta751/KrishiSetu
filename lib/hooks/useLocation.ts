@@ -22,24 +22,32 @@ export interface LocationData {
   lng:   number;
   label: string;  // "New Delhi, Delhi"
   state: string;  // "Delhi" — for matching REGION_COORDS
+  district?: string;
+  pincode?:  string; // 6-digit Indian PIN code
 }
 
 const CACHE_KEY = "cropwise_user_location";
 
-async function reverseGeocode(lat: number, lng: number): Promise<{ label: string; state: string }> {
+async function reverseGeocode(
+  lat: number,
+  lng: number
+): Promise<{ label: string; state: string; district?: string; pincode?: string }> {
   try {
     const res  = await fetch(
-      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`,
+      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&zoom=18&addressdetails=1`,
       { headers: { "Accept-Language": "en-US,en" } }
     );
     const data = await res.json();
-    const addr  = data.address ?? {};
-    const city  = addr.city || addr.town || addr.village || addr.county || addr.suburb || "";
+    const addr = data.address ?? {};
+    const city = addr.city || addr.town || addr.village || addr.county || addr.suburb || "";
     const state = addr.state || "";
+    const district = addr.state_district || addr.county || addr.city || addr.town || "";
+    const rawPostcode = addr.postcode || addr.postalcode || "";
+    const pincode = rawPostcode ? rawPostcode.replace(/\D/g, "").slice(0, 6) : "";
     const label = city && state ? `${city}, ${state}` : state || "Your Location";
-    return { label, state };
+    return { label, state, district, pincode };
   } catch {
-    return { label: "Your Location", state: "" };
+    return { label: "Your Location", state: "", district: "", pincode: "" };
   }
 }
 
@@ -70,8 +78,8 @@ export function useLocation(userId?: string) {
         navigator.geolocation.getCurrentPosition(
           async (pos) => {
             const { latitude: lat, longitude: lng } = pos.coords;
-            const { label, state } = await reverseGeocode(lat, lng);
-            const loc: LocationData = { lat, lng, label, state };
+            const { label, state, district, pincode } = await reverseGeocode(lat, lng);
+            const loc: LocationData = { lat, lng, label, state, district, pincode };
             sessionStorage.setItem(CACHE_KEY, JSON.stringify(loc));
             setLocation(loc);
             setLoading(false);
@@ -99,7 +107,14 @@ export function useLocation(userId?: string) {
         label = `${profile.location.district}, ${profile.location.state}`;
       }
 
-      const loc: LocationData = { lat: coords.lat, lng: coords.lng, label, state };
+      const loc: LocationData = {
+        lat: coords.lat,
+        lng: coords.lng,
+        label,
+        state,
+        district: profile?.location?.district ?? "",
+        pincode: profile?.location?.pincode ?? "",
+      };
       sessionStorage.setItem(CACHE_KEY, JSON.stringify(loc));
       setLocation(loc);
       setLoading(false);
@@ -118,8 +133,8 @@ export function useLocation(userId?: string) {
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
         const { latitude: lat, longitude: lng } = pos.coords;
-        const { label, state } = await reverseGeocode(lat, lng);
-        const loc: LocationData = { lat, lng, label, state };
+        const { label, state, district, pincode } = await reverseGeocode(lat, lng);
+        const loc: LocationData = { lat, lng, label, state, district, pincode };
         sessionStorage.setItem(CACHE_KEY, JSON.stringify(loc));
         setLocation(loc);
         setLoading(false);

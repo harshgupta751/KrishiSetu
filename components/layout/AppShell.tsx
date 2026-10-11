@@ -75,7 +75,26 @@ export default function AppShell({ children }: AppShellProps) {
   const [query, setQuery]           = useState("");
   const [notifOpen, setNotifOpen]   = useState(false);
   const [notifs, setNotifs]         = useState<ActivityLogEntry[] | null>(null);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const headerRef = useRef<HTMLElement>(null);
+
+  // Sync sidebar collapsed state from localStorage
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("sidebar-collapsed");
+      if (saved === "true") setSidebarCollapsed(true);
+    } catch { /* ignore */ }
+  }, []);
+
+  const handleToggleCollapse = () => {
+    setSidebarCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem("sidebar-collapsed", String(next));
+      } catch { /* ignore */ }
+      return next;
+    });
+  };
 
   // Seed app language from the user's saved profile (once), unless the user
   // has already chosen one on this device (localStorage wins).
@@ -110,7 +129,7 @@ export default function AppShell({ children }: AppShellProps) {
   const pageMeta =
     PAGE_TITLES[pathname] ??
     PAGE_TITLES[Object.keys(PAGE_TITLES).find((k) => pathname.startsWith(k)) ?? ""] ??
-    { title: "CropWise AI", subtitle: "" };
+    { title: "KrishiSetu", subtitle: "" };
 
   const handleSignOut = async () => {
     await signOut();
@@ -140,9 +159,16 @@ export default function AppShell({ children }: AppShellProps) {
           mobileOpen={mobileOpen}
           onMobileClose={() => setMobileOpen(false)}
           onNotificationsClick={() => { setNotifOpen((v) => !v); setSearchOpen(false); }}
+          collapsed={sidebarCollapsed}
+          onToggleCollapse={handleToggleCollapse}
         />
 
-        <div className="transition-all duration-300 ease-in-out lg:pl-64">
+        <div
+          className={cn(
+            "transition-all duration-300 ease-in-out",
+            sidebarCollapsed ? "lg:pl-[72px]" : "lg:pl-64"
+          )}
+        >
           {/* Header */}
           <header ref={headerRef} className="sticky top-0 z-30 h-16 flex items-center gap-4 px-4 md:px-6 border-b border-cropwise-border bg-cropwise-bg/90 backdrop-blur-md">
             <MobileMenuButton onClick={() => setMobileOpen(true)} />

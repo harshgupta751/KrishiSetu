@@ -34,9 +34,9 @@ export default function RootPage() {
           className="text-center"
         >
           <h1 className="text-6xl md:text-8xl font-black text-cropwise-text mb-6 tracking-tight">
-            CropWise{" "}
+            Krishi
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-cropwise-green to-cropwise-green-light">
-              AI
+              Setu
             </span>
           </h1>
           <p className="text-xl md:text-3xl text-cropwise-muted mb-12 font-light max-w-2xl mx-auto leading-relaxed">

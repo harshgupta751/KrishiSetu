@@ -21,7 +21,7 @@ const dmMono = DM_Mono({
 });
 
 export const metadata: Metadata = {
-  title: { default: "CropWise AI — Smart Farming Advisor", template: "%s | CropWise AI" },
+  title: { default: "KrishiSetu — Smart Farming Advisor", template: "%s | KrishiSetu" },
   description: "AI-powered agricultural advisor for Indian farmers.",
 };
 

@@ -264,10 +264,15 @@ function ActionCard({ location }: { location: string }) {
         <p className="text-xs text-[#82d882]/80 leading-relaxed mb-4">
           {t("Local stocks for Hybrid-4 are depleting. Reserve now to ensure 100% germination rate.")}
         </p>
-        <button className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg bg-white text-cropwise-bg text-sm font-semibold hover:bg-cropwise-text transition-colors active:scale-95">
+        <a
+          href={`https://www.google.com/maps/search/Seed+and+fertilizer+suppliers+near+${encodeURIComponent(locationText)}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg bg-white text-cropwise-bg text-sm font-semibold hover:bg-cropwise-text transition-colors active:scale-95"
+        >
           <MapPin className="w-4 h-4" />
           {t("Locate Supplier Near")} {locationText}
-        </button>
+        </a>
       </div>
 
       {/* Chat bubble icon */}
