@@ -57,14 +57,24 @@ function timeAgo(entry: ActivityLogEntry): string {
   return `${Math.floor(diff / 86400000)} days ago`;
 }
 
-const CHART_DATA = [
-  { day:"Day 1",  "Rainfall (mm)":18, "Moisture Content (%)":42 },
-  { day:"Day 5",  "Rainfall (mm)":12, "Moisture Content (%)":55 },
-  { day:"Day 10", "Rainfall (mm)":22, "Moisture Content (%)":48 },
-  { day:"Day 15", "Rainfall (mm)":30, "Moisture Content (%)":68 },
-  { day:"Day 20", "Rainfall (mm)":8,  "Moisture Content (%)":60 },
-  { day:"Day 25", "Rainfall (mm)":25, "Moisture Content (%)":72 },
-  { day:"Day 30", "Rainfall (mm)":15, "Moisture Content (%)":65 },
+const MONTH_DATA = [
+  { day: "Day 1",  "Rainfall (mm)": 18, "Moisture Content (%)": 42 },
+  { day: "Day 5",  "Rainfall (mm)": 12, "Moisture Content (%)": 55 },
+  { day: "Day 10", "Rainfall (mm)": 22, "Moisture Content (%)": 48 },
+  { day: "Day 15", "Rainfall (mm)": 30, "Moisture Content (%)": 68 },
+  { day: "Day 20", "Rainfall (mm)": 8,  "Moisture Content (%)": 60 },
+  { day: "Day 25", "Rainfall (mm)": 25, "Moisture Content (%)": 72 },
+  { day: "Day 30", "Rainfall (mm)": 15, "Moisture Content (%)": 65 },
+];
+
+const WEEK_DATA = [
+  { day: "Mon", "Rainfall (mm)": 6,  "Moisture Content (%)": 45 },
+  { day: "Tue", "Rainfall (mm)": 16, "Moisture Content (%)": 58 },
+  { day: "Wed", "Rainfall (mm)": 2,  "Moisture Content (%)": 50 },
+  { day: "Thu", "Rainfall (mm)": 24, "Moisture Content (%)": 68 },
+  { day: "Fri", "Rainfall (mm)": 19, "Moisture Content (%)": 72 },
+  { day: "Sat", "Rainfall (mm)": 8,  "Moisture Content (%)": 64 },
+  { day: "Sun", "Rainfall (mm)": 14, "Moisture Content (%)": 62 },
 ];
 
 const containerVariants = {
@@ -242,7 +252,12 @@ export default function DashboardPage() {
         {/* Chart */}
         <motion.div variants={itemVariants} className="rounded-xl bg-cropwise-surface border border-cropwise-border p-5">
           <div className="flex items-start justify-between mb-5">
-            <div><h2 className="text-sm font-semibold text-cropwise-text">{t("Moisture & Rainfall Analysis")}</h2><p className="text-xs text-cropwise-faint mt-0.5">{t("Historical data for the last 30 days")}</p></div>
+            <div>
+              <h2 className="text-sm font-semibold text-cropwise-text">{t("Moisture & Rainfall Analysis")}</h2>
+              <p className="text-xs text-cropwise-faint mt-0.5">
+                {chartView === "Week" ? t("Historical data for the last 7 days") : t("Historical data for the last 30 days")}
+              </p>
+            </div>
             <div className="flex rounded-lg overflow-hidden border border-cropwise-border">
               {(["Month","Week"] as const).map(v=>(
                 <button key={v} onClick={()=>setChartView(v)} className={cn("px-3 py-1.5 text-xs font-medium transition-colors",chartView===v?"bg-cropwise-green text-cropwise-bg":"text-cropwise-faint hover:text-cropwise-muted")}>{t(v)}</button>
@@ -251,7 +266,7 @@ export default function DashboardPage() {
           </div>
           <div className="h-52">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={CHART_DATA} margin={{top:5,right:5,left:-25,bottom:0}} barGap={4}>
+              <BarChart data={chartView === "Week" ? WEEK_DATA : MONTH_DATA} margin={{top:5,right:5,left:-25,bottom:0}} barGap={4}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#1e2d20" vertical={false}/>
                 <XAxis dataKey="day" tick={{fontSize:10,fill:"#5a7460"}} axisLine={false} tickLine={false}/>
                 <YAxis tick={{fontSize:10,fill:"#5a7460"}} axisLine={false} tickLine={false}/>
