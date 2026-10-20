@@ -265,6 +265,36 @@ export default function ChatInterface({ initialPrompt }: { initialPrompt?: strin
       .catch(() => setContextReady(true));
   }, [user, location]);
 
+  // ── Sync user profile to Neo4j for RAG memory ────────────────
+  useEffect(() => {
+    if (!user || !contextReady) return;
+    // Fire-and-forget sync
+    getUserProfile(user.uid)
+      .then((profile) => {
+        fetch("/api/neo4j/memory", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: user.uid,
+            displayName: profile?.displayName || user.displayName || "Farmer",
+            district: profile?.location?.district,
+            state: profile?.location?.state,
+            cropsGrown: profile?.primaryCrops,
+            farmSize: profile?.landHolding,
+            farmName: profile?.farmName,
+            preferredLanguage: profile?.preferredLanguage,
+          }),
+        }).catch(() => {});
+      })
+      .catch(() => {
+        fetch("/api/neo4j/memory", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId: user.uid, displayName: user.displayName }),
+        }).catch(() => {});
+      });
+  }, [user, contextReady]);
+
   // ── Load sessions ─────────────────────────────────────────────
   useEffect(() => {
     if (!user) return;
@@ -363,6 +393,7 @@ export default function ChatInterface({ initialPrompt }: { initialPrompt?: strin
         history: mode === "chat" ? messages
           .filter((m) => m.content && !m.isStreaming && (m.role === "user" || m.role === "model"))
           .map((m) => ({ role: m.role as "user" | "model", content: m.content })) : undefined,
+        userId: user?.uid, // Pass user ID for Neo4j RAG memory
         ...(image && { imageBase64: image.base64, imageMimeType: image.mimeType }),
       };
 

@@ -11,6 +11,7 @@ import { NextRequest, NextResponse } from "next/server";
 import type { GeminiRequestBody, GeminiResponseBody } from "@/types";
 import { safeJsonParse } from "@/lib/utils";
 import { getNeo4jDriver } from "@/lib/neo4j";
+import { getRelevantContext, addMessageToHistory } from "@/lib/neo4j-memory";
 
 // ─── Model ────────────────────────────────────────────────────────────────────
 
@@ -288,14 +289,14 @@ export async function POST(req: NextRequest): Promise<NextResponse<GeminiRespons
     try { body = await req.json(); }
     catch { return NextResponse.json({ success: false, error: "Invalid JSON." }, { status: 400 }); }
 
-    const { prompt, mode, language = "en", imageBase64, imageMimeType, context, history } = body;
+    const { prompt, mode, language = "en", imageBase64, imageMimeType, context, history, userId } = body;
 
     if (!prompt?.trim()) {
       return NextResponse.json({ success: false, error: "Prompt required." }, { status: 400 });
     }
 
     if (mode === "chat") {
-      return await handleChat(apiKey, prompt, language, context, history);
+      return await handleChat(apiKey, prompt, language, context, history, userId);
     }
     if (mode === "pest_diagnosis") {
       if (!imageBase64 || !imageMimeType) {
@@ -326,13 +327,34 @@ async function handleChat(
   prompt: string,
   language: string,
   context?: string,
-  history?: { role: "user" | "model"; content: string }[]
+  history?: { role: "user" | "model"; content: string }[],
+  userId?: string
 ): Promise<NextResponse<GeminiResponseBody>> {
+  // Get RAG context from Neo4j
+  let neo4jContext = "";
+  if (userId) {
+    try {
+      neo4jContext = await getRelevantContext(userId, prompt);
+    } catch { /* non-critical */ }
+  }
+
+  // Combine existing real-time context with Neo4j memory context
+  const fullContext = [context, neo4jContext].filter(Boolean).join("\n\n");
+
   const contents: Content[] = [
     ...(history?.map(h => ({ role: h.role, parts: [{ text: h.content }] as Part[] })) ?? []),
     { role: "user", parts: [{ text: prompt }] },
   ];
-  const text = await geminiGenerate(apiKey, buildChatSystemPrompt(language, context), contents, false);
+  const text = await geminiGenerate(apiKey, buildChatSystemPrompt(language, fullContext), contents, false);
+
+  // Persist conversation to Neo4j
+  if (userId) {
+    try {
+      await addMessageToHistory(userId, "human", prompt);
+      await addMessageToHistory(userId, "ai", text);
+    } catch { /* non-critical */ }
+  }
+
   return NextResponse.json({ success: true, text });
 }
 

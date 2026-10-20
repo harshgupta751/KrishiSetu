@@ -96,6 +96,7 @@ export interface GeminiRequestBody {
   imageMimeType?: string;   // e.g. "image/jpeg"
   context?: string;         // Optional extra context (soil type, region, etc.)
   history?: { role: "user" | "model"; content: string }[]; // Conversation history
+  userId?: string;          // User ID (Firebase UID) for Neo4j RAG conversational memory
 }
 
 export interface GeminiResponseBody {
