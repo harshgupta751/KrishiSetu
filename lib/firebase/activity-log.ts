@@ -49,3 +49,41 @@ export async function getUserActivityLogs(
     ...(d.data() as Omit<ActivityLogEntry, "id">),
   }));
 }
+
+
+// ─── Fetch recent farm activities for RAG context injection ───────────────────
+
+export interface FarmActivityEntry {
+  id:        string;
+  type:      string;
+  action:    string;
+  quantity:  string;
+  costINR:   number;
+  status:    string;
+  notes:     string;
+  date:      string;
+  createdAt?: unknown;
+}
+
+/**
+ * Fetches the last N farm activities from the farmActivities collection.
+ * Used by ChatInterface to inject recent farm operations into the AI context
+ * so the model can give advice aware of what the farmer recently did
+ * (e.g., last irrigation, fertilizer application, sowing dates).
+ */
+export async function getRecentFarmActivities(
+  userId: string,
+  maxItems = 5
+): Promise<FarmActivityEntry[]> {
+  const q = query(
+    collection(db, "farmActivities"),
+    where("userId", "==", userId),
+    orderBy("createdAt", "desc"),
+    limit(maxItems)
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map((d: import('firebase/firestore').QueryDocumentSnapshot) => ({
+    id: d.id,
+    ...(d.data() as Omit<FarmActivityEntry, "id">),
+  }));
+}

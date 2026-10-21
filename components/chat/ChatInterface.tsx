@@ -7,6 +7,7 @@
  *  - Live weather (temperature, humidity, soil moisture, rain forecast)
  *  - Live market prices (wheat, key crops vs MSP)
  *  - Chat history persisted to Firebase Firestore
+ *  - Recent farm activities (last 5 operations from Firestore)
  */
 
 "use client";
@@ -27,6 +28,7 @@ import {
 import { logActivity } from "@/lib/firebase/activity-log";
 import { useAuth } from "@/lib/firebase/auth-context";
 import { getUserProfile } from "@/lib/firebase/user-profile";
+import { getRecentFarmActivities } from "@/lib/firebase/activity-log";
 import { useLocation } from "@/lib/hooks/useLocation";
 import { LANGUAGE_OPTIONS } from "@/app/chat/types";
 import type { FirestoreUser } from "@/lib/firestore-schema";
@@ -94,6 +96,30 @@ async function buildRealtimeContext(
         )
         .join("\n  ");
       parts.push(`LIVE MANDI PRICES:\n  ${priceLines}`);
+    }
+  } catch { /* non-critical */ }
+
+
+  // ── 4. Recent farm activities from Firestore ──────────────────
+  try {
+    const activities = await getRecentFarmActivities(user.uid, 5);
+    if (activities.length > 0) {
+      const now = Date.now();
+      const activityLines = activities.map((a) => {
+        // Calculate days ago from the date string or createdAt timestamp
+        let daysAgo = "";
+        if (a.createdAt && typeof a.createdAt === "object" && "seconds" in (a.createdAt as any)) {
+          const ts = (a.createdAt as any).seconds * 1000;
+          const diff = Math.round((now - ts) / (1000 * 60 * 60 * 24));
+          daysAgo = diff === 0 ? "Today" : diff === 1 ? "1 day ago" : `${diff} days ago`;
+        } else if (a.date) {
+          daysAgo = a.date;
+        }
+        const cost = a.costINR ? ` (Cost: ₹${a.costINR})` : "";
+        const notes = a.notes ? ` — ${a.notes}` : "";
+        return `- [${daysAgo}] ${a.action}: ${a.quantity}${cost}${notes}`;
+      });
+      parts.push(`RECENT FARM ACTIVITIES (last ${activities.length} operations):\n${activityLines.join("\n")}`);
     }
   } catch { /* non-critical */ }
 
@@ -572,4 +598,4 @@ export default function ChatInterface({ initialPrompt }: { initialPrompt?: strin
       </div>
     </div>
   );
-}
+}

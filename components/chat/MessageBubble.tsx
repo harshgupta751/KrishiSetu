@@ -91,7 +91,10 @@ export default function MessageBubble({ message, language = "hi" }: MessageBubbl
         } else {
           audioRef.current.src = audioSrc;
         }
-        audioRef.current.play();
+        audioRef.current.play().catch(() => {
+          // Browser blocked autoplay — user may need to interact first
+          setIsPlaying(false);
+        });
         setIsPlaying(true);
       }
     } catch (error) {

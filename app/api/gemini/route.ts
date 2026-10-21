@@ -2,8 +2,8 @@
 /**
  * app/api/gemini/route.ts
  * ============================================================
- * Central AI API Route — OpenAI GPT
- * Model: gpt-4.1-mini-2025-04-14
+ * Central AI API Route — Multi-Provider Fallback
+ * Priority: Gemini Key 1 → Gemini Key 2 → Groq (OpenAI-compatible)
  * ============================================================
  */
 
@@ -15,12 +15,9 @@ import { getRelevantContext, addMessageToHistory } from "@/lib/neo4j-memory";
 
 // ─── Model ────────────────────────────────────────────────────────────────────
 
-// gemini-2.5-flash is current and multimodal (text + vision). Free-tier quota
-// for the older gemini-2.0-flash has been reduced to 0 on many projects.
-// Default to flash-lite (separate, higher free-tier daily quota than 2.5 Flash).
-// Override with GEMINI_MODEL env (e.g. "gemini-3.1-flash-lite" for 500 req/day).
-const MODEL_TEXT   = process.env.GEMINI_MODEL || "gemini-3.1-flash-lite";  // Text: chat + crop advisor
-const MODEL_VISION = process.env.GEMINI_MODEL || "gemini-3.1-flash-lite";  // Vision: pest diagnosis (supports images)
+const MODEL_TEXT   = process.env.GEMINI_MODEL || "gemini-3.1-flash-lite";
+const MODEL_VISION = process.env.GEMINI_MODEL || "gemini-3.1-flash-lite";
+const GROQ_MODEL   = process.env.GROQ_MODEL   || "qwen/qwen3.8-27b";
 
 // Allow agricultural content (pesticide names, chemical treatments) without blocking
 const SAFETY_SETTINGS = [
@@ -30,10 +27,139 @@ const SAFETY_SETTINGS = [
   { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_ONLY_HIGH" },
 ];
 
-// ─── Direct REST call to Gemini ───────────────────────────────────────────────
-// Uses the `x-goog-api-key` header, which is Google's documented auth method and
-// works with BOTH standard keys (AIza…) and the newer authorization keys (AQ…).
-// The deprecated @google/generative-ai SDK sent auth keys the wrong way (401).
+// ─── User-friendly error messages ─────────────────────────────────────────────
+
+const USER_FRIENDLY_ERRORS: Record<string, string> = {
+  rate_limit:    "Our AI service is currently busy. Please wait a moment and try again.",
+  quota:         "Daily AI usage limit reached. Please try again tomorrow or contact support.",
+  auth:          "AI service configuration error. Please contact the administrator.",
+  network:       "Unable to reach AI services. Please check your connection and try again.",
+  parse:         "AI returned an unexpected response. Please try rephrasing your question.",
+  all_failed:    "All AI services are temporarily unavailable. Please try again in a few minutes.",
+  no_keys:       "AI service is not configured. Please contact the administrator.",
+  default:       "Something went wrong. Please try again.",
+};
+
+function getUserFriendlyError(rawError: string): string {
+  const lower = rawError.toLowerCase();
+  if (lower.includes("rate") || lower.includes("429") || lower.includes("too many"))
+    return USER_FRIENDLY_ERRORS.rate_limit;
+  if (lower.includes("quota") || lower.includes("exhausted") || lower.includes("limit"))
+    return USER_FRIENDLY_ERRORS.quota;
+  if (lower.includes("401") || lower.includes("403") || lower.includes("auth") || lower.includes("invalid api key"))
+    return USER_FRIENDLY_ERRORS.auth;
+  if (lower.includes("network") || lower.includes("fetch") || lower.includes("econnrefused") || lower.includes("enotfound"))
+    return USER_FRIENDLY_ERRORS.network;
+  if (lower.includes("parse") || lower.includes("json"))
+    return USER_FRIENDLY_ERRORS.parse;
+  return USER_FRIENDLY_ERRORS.default;
+}
+
+// ─── Multi-key configuration ──────────────────────────────────────────────────
+
+interface AIProvider {
+  name: string;
+  generate: (
+    systemInstruction: string,
+    contents: Content[],
+    jsonOut: boolean
+  ) => Promise<string>;
+}
+
+function cleanKey(key?: string): string {
+  return key?.trim().replace(/^["']|["']$/g, "") ?? "";
+}
+
+function getProviders(): AIProvider[] {
+  const providers: AIProvider[] = [];
+
+  // Gemini Key 1 (primary)
+  const geminiKey1 = cleanKey(process.env.GEMINI_API_KEY);
+  if (geminiKey1) {
+    providers.push({
+      name: "Gemini (Key 1)",
+      generate: (sys, contents, jsonOut) => geminiGenerate(geminiKey1, sys, contents, jsonOut),
+    });
+  }
+
+  // Gemini Key 2 (fallback)
+  const geminiKey2 = cleanKey(process.env.GEMINI_API_KEY_2);
+  if (geminiKey2) {
+    providers.push({
+      name: "Gemini (Key 2)",
+      generate: (sys, contents, jsonOut) => geminiGenerate(geminiKey2, sys, contents, jsonOut),
+    });
+  }
+
+  // Groq (last resort)
+  const groqKey = cleanKey(process.env.GROQ_API_KEY);
+  if (groqKey) {
+    providers.push({
+      name: "Groq",
+      generate: (sys, contents, jsonOut) => groqGenerate(groqKey, sys, contents, jsonOut),
+    });
+  }
+
+  return providers;
+}
+
+/**
+ * Try each AI provider in order. Returns the first successful response.
+ * Logs failures internally but never exposes raw errors to the user.
+ * Retries transient errors (503, 429) up to MAX_RETRIES times with backoff.
+ */
+const MAX_RETRIES = 2;
+const RETRY_DELAY_MS = 1500; // 1.5 seconds between retries
+
+function isTransientError(msg: string): boolean {
+  return /503|429|unavailable|overloaded|high demand|too many|rate/i.test(msg);
+}
+
+async function generateWithFallback(
+  systemInstruction: string,
+  contents: Content[],
+  jsonOut: boolean
+): Promise<string> {
+  const providers = getProviders();
+  if (providers.length === 0) {
+    throw new Error(USER_FRIENDLY_ERRORS.no_keys);
+  }
+
+  const errors: string[] = [];
+
+  for (const provider of providers) {
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        console.log(`[AI] Trying ${provider.name}${attempt > 0 ? ` (retry ${attempt}/${MAX_RETRIES})` : ""}...`);
+        const result = await provider.generate(systemInstruction, contents, jsonOut);
+        if (result) {
+          console.log(`[AI] ✅ ${provider.name} succeeded.`);
+          return result;
+        }
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error(`[AI] ❌ ${provider.name} failed: ${msg}`);
+
+        // Retry only on transient errors (503/429), not on auth or model errors
+        if (isTransientError(msg) && attempt < MAX_RETRIES) {
+          const delay = RETRY_DELAY_MS * (attempt + 1); // linear backoff
+          console.log(`[AI] ⏳ Retrying ${provider.name} in ${delay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue;
+        }
+
+        errors.push(`${provider.name}: ${msg}`);
+        break; // move to next provider
+      }
+    }
+  }
+
+  // All providers failed — log full details server-side, return friendly message
+  console.error(`[AI] All providers exhausted. Errors:\n${errors.join("\n")}`);
+  throw new Error(USER_FRIENDLY_ERRORS.all_failed);
+}
+
+// ─── Gemini REST call ─────────────────────────────────────────────────────────
 
 type Part = { text: string } | { inlineData: { mimeType: string; data: string } };
 type Content = { role: "user" | "model"; parts: Part[] };
@@ -76,6 +202,80 @@ async function geminiGenerate(
     if (res.status !== 401 && res.status !== 403) break;
   }
   throw new Error(`Gemini API ${lastDetail}`);
+}
+
+// ─── Groq REST call (OpenAI-compatible) ───────────────────────────────────────
+
+type GroqContentPart =
+  | { type: "text"; text: string }
+  | { type: "image_url"; image_url: { url: string } };
+
+type GroqMessage =
+  | { role: "system"; content: string }
+  | { role: "user" | "assistant"; content: string | GroqContentPart[] };
+
+async function groqGenerate(
+  apiKey: string,
+  systemInstruction: string,
+  contents: Content[],
+  jsonOut: boolean
+): Promise<string> {
+  // Convert Gemini-style contents to OpenAI messages format
+  const messages: GroqMessage[] = [
+    { role: "system", content: systemInstruction },
+  ];
+
+  for (const c of contents) {
+    const role = c.role === "model" ? "assistant" as const : "user" as const;
+    const parts: GroqContentPart[] = [];
+
+    for (const p of c.parts) {
+      if ("text" in p) {
+        parts.push({ type: "text", text: p.text });
+      } else if ("inlineData" in p) {
+        // Pass images as base64 data URLs (supported by Qwen vision models on Groq)
+        parts.push({
+          type: "image_url",
+          image_url: { url: `data:${p.inlineData.mimeType};base64,${p.inlineData.data}` },
+        });
+      }
+    }
+
+    if (parts.length > 0) {
+      // Use simple string content for assistant messages or text-only user messages
+      const textOnly = parts.every(p => p.type === "text");
+      if (role === "assistant" || textOnly) {
+        messages.push({ role, content: parts.filter(p => p.type === "text").map(p => (p as { type: "text"; text: string }).text).join("\n") });
+      } else {
+        messages.push({ role, content: parts });
+      }
+    }
+  }
+
+  const body: Record<string, unknown> = {
+    model: GROQ_MODEL,
+    messages,
+    temperature: 0.7,
+    max_tokens: 2048,
+  };
+  if (jsonOut) body.response_format = { type: "json_object" };
+
+  const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const errorText = (await res.text()).slice(0, 250);
+    throw new Error(`Groq API ${res.status}: ${errorText}`);
+  }
+
+  const data = await res.json();
+  return (data?.choices?.[0]?.message?.content ?? "").trim();
 }
 
 // ─── System Prompts ───────────────────────────────────────────────────────────
@@ -275,12 +475,11 @@ and "cropName"/"bestCrop" (use the common English crop name). Use simple ${name}
 
 export async function POST(req: NextRequest): Promise<NextResponse<GeminiResponseBody>> {
   try {
-    // Trim whitespace and strip accidental surrounding quotes (a common cause of
-    // 401s when the value is pasted into a host dashboard with quotes included).
-    const apiKey = process.env.GEMINI_API_KEY?.trim().replace(/^["']|["']$/g, "");
-    if (!apiKey) {
+    // Check that at least one AI provider is configured
+    const providers = getProviders();
+    if (providers.length === 0) {
       return NextResponse.json(
-        { success: false, error: "GEMINI_API_KEY not set in .env.local" },
+        { success: false, error: USER_FRIENDLY_ERRORS.no_keys },
         { status: 503 }
       );
     }
@@ -296,7 +495,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<GeminiRespons
     }
 
     if (mode === "chat") {
-      return await handleChat(apiKey, prompt, language, context, history, userId);
+      return await handleChat(prompt, language, context, history, userId);
     }
     if (mode === "pest_diagnosis") {
       if (!imageBase64 || !imageMimeType) {
@@ -305,25 +504,26 @@ export async function POST(req: NextRequest): Promise<NextResponse<GeminiRespons
           { status: 400 }
         );
       }
-      return await handlePestDiagnosis(apiKey, prompt, imageBase64, imageMimeType, language);
+      return await handlePestDiagnosis(prompt, imageBase64, imageMimeType, language);
     }
     if (mode === "crop_advisor") {
-      return await handleCropAdvisor(apiKey, prompt, context, language);
+      return await handleCropAdvisor(prompt, context, language);
     }
 
     return NextResponse.json({ success: false, error: `Invalid mode: ${mode}` }, { status: 400 });
 
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : "Unexpected error";
-    console.error("[OpenAI API] Unhandled error:", err);
-    return NextResponse.json({ success: false, error: msg }, { status: 500 });
+    const rawMsg = err instanceof Error ? err.message : "Unexpected error";
+    console.error("[AI Route] Unhandled error:", err);
+    // Return user-friendly error instead of raw API details
+    const friendlyMsg = getUserFriendlyError(rawMsg);
+    return NextResponse.json({ success: false, error: friendlyMsg }, { status: 500 });
   }
 }
 
 // ─── Handler: Chat ────────────────────────────────────────────────────────────
 
 async function handleChat(
-  apiKey: string,
   prompt: string,
   language: string,
   context?: string,
@@ -345,7 +545,7 @@ async function handleChat(
     ...(history?.map(h => ({ role: h.role, parts: [{ text: h.content }] as Part[] })) ?? []),
     { role: "user", parts: [{ text: prompt }] },
   ];
-  const text = await geminiGenerate(apiKey, buildChatSystemPrompt(language, fullContext), contents, false);
+  const text = await generateWithFallback(buildChatSystemPrompt(language, fullContext), contents, false);
 
   // Persist conversation to Neo4j
   if (userId) {
@@ -361,7 +561,6 @@ async function handleChat(
 // ─── Handler: Pest Diagnosis (Vision) ────────────────────────────────────────
 
 async function handlePestDiagnosis(
-  apiKey: string,
   prompt: string,
   imageBase64: string,
   imageMimeType: string,
@@ -377,13 +576,13 @@ async function handlePestDiagnosis(
     },
   ];
 
-  const rawText    = await geminiGenerate(apiKey, PEST_SYSTEM + pestLangInstruction(language), contents, true);
+  const rawText    = await generateWithFallback(PEST_SYSTEM + pestLangInstruction(language), contents, true);
   const structured = safeJsonParse<Record<string, unknown>>(rawText);
 
   if (!structured) {
     console.error("[Pest Diagnosis] Failed to parse JSON:", rawText);
     return NextResponse.json(
-      { success: false, error: "AI returned unparseable response. Try again.", text: rawText },
+      { success: false, error: USER_FRIENDLY_ERRORS.parse },
       { status: 500 }
     );
   }
@@ -415,7 +614,7 @@ async function handlePestDiagnosis(
         score: record.get('score').toNumber()
       }));
 
-      // Inject Neo4j graph data into the Gemini response
+      // Inject Neo4j graph data into the response
       if (sustainableTreatments.length > 0) {
         if (!structured.treatment) structured.treatment = {};
         (structured.treatment as Record<string, unknown>).sustainableAlternativesFromGraph = sustainableTreatments;
@@ -435,7 +634,6 @@ async function handlePestDiagnosis(
 // ─── Handler: Crop Advisor ────────────────────────────────────────────────────
 
 async function handleCropAdvisor(
-  apiKey: string,
   prompt: string,
   context?: string,
   language = "en"
@@ -445,12 +643,12 @@ async function handleCropAdvisor(
     : prompt;
 
   const contents: Content[] = [{ role: "user", parts: [{ text: fullPrompt }] }];
-  const rawText    = await geminiGenerate(apiKey, CROP_ADVISOR_SYSTEM + cropLangInstruction(language), contents, true);
+  const rawText    = await generateWithFallback(CROP_ADVISOR_SYSTEM + cropLangInstruction(language), contents, true);
   const structured = safeJsonParse<Record<string, unknown>>(rawText);
 
   if (!structured) {
     return NextResponse.json(
-      { success: false, error: "AI returned unparseable response.", text: rawText },
+      { success: false, error: USER_FRIENDLY_ERRORS.parse },
       { status: 500 }
     );
   }
